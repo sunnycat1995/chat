@@ -5,11 +5,18 @@ import com.myproject.chat.network.ConnectionListener;
 
 import java.io.IOException;
 import java.net.ServerSocket;
-import java.util.ArrayList;
+import java.net.Socket;
 import java.util.List;
+import java.util.concurrent.CopyOnWriteArrayList;
+import java.util.concurrent.LinkedBlockingQueue;
+import java.util.concurrent.ThreadPoolExecutor;
+import java.util.concurrent.TimeUnit;
 
 public class Server implements ConnectionListener {
-    private final List<Connection> connections = new ArrayList<Connection>();
+
+    private final ThreadPoolExecutor executor;
+
+    private final List<Connection> connections = new CopyOnWriteArrayList<Connection>();
 
     public static void main(String[] args) {
         new Server();
@@ -17,11 +24,13 @@ public class Server implements ConnectionListener {
 
     private Server() {
         System.out.println("Server running...");
+        executor = new ThreadPoolExecutor(1, 6, 2, TimeUnit.SECONDS, new LinkedBlockingQueue<Runnable>());
         try {
             ServerSocket serverSocket = new ServerSocket(8189);
-            while (true) {
+            while (!serverSocket.isClosed()) {
                 try {
-                    new Connection(this, serverSocket.accept());
+                    Socket clientSocket = serverSocket.accept();
+                    executor.submit(new Connection(this, clientSocket));
                 } catch (IOException e) {
                     System.err.println("Connection exception" + e);
                 }
@@ -31,29 +40,28 @@ public class Server implements ConnectionListener {
         }
     }
 
-    public synchronized void onConnectionReady(Connection connection) {
+    public void onConnectionReady(Connection connection) {
         connections.add(connection);
         sendToAllConnections("Client connected: " + connection);
     }
 
-    public synchronized void onReceiveMessage(Connection connection, String message) {
+    public void onReceiveMessage(Connection connection, String message) {
         sendToAllConnections(message);
     }
 
-    public synchronized void onDisconnect(Connection connection) {
+    public void onDisconnect(Connection connection) {
         connections.remove(connection);
         sendToAllConnections("Client disconnected: " + connection);
     }
 
-    public synchronized void onException(Connection connection, Exception e) {
+    public void onException(Connection connection, Exception e) {
         System.err.println("Connection exception: " + e);
     }
 
-    private void sendToAllConnections(String value) {
-        System.out.println(value);
-        int connectionsSize = connections.size();
-        for (int i = 0; i < connectionsSize; ++i) {
-            connections.get(i).sendString(value);
+    private void sendToAllConnections(String message) {
+        System.out.println(message);
+        for (Connection connection : connections) {
+            connection.sendString(message);
         }
     }
 }

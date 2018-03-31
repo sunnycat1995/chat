@@ -4,8 +4,13 @@ package com.myproject.chat;
 import com.myproject.chat.network.Connection;
 import com.myproject.chat.network.ConnectionListener;
 
-import javax.swing.*;
-import java.awt.*;
+import javax.swing.JFrame;
+import javax.swing.JPanel;
+import javax.swing.JTextArea;
+import javax.swing.JTextField;
+import javax.swing.SwingUtilities;
+import javax.swing.WindowConstants;
+import java.awt.BorderLayout;
 import java.awt.event.ActionEvent;
 import java.awt.event.ActionListener;
 import java.io.IOException;
@@ -60,7 +65,7 @@ public class ClientWindow extends JFrame implements ConnectionListener, ActionLi
         }
     }
 
-    private synchronized void printMessage(final String msg) {
+    private void printMessage(final String msg) {
         SwingUtilities.invokeLater(new Runnable() {
             public void run() {
                 log.append(msg + "\n");
